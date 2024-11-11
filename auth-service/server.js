@@ -38,14 +38,14 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      // Directly use the auth-service URL here to avoid loops
       callbackURL:
-        "https://api-gateway-three-roan.vercel.app/auth/google/callback", // API Gateway URL on Vercel
+        "https://auth-service-nine-tan.vercel.app/auth/google/callback",
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
         let user = await User.findOne({ googleId: profile.id });
 
-        // Define the list of approver emails
         const approverEmails = ["hafiz.ammar33@gmail.com"];
         const role = approverEmails.includes(profile.emails[0].value)
           ? "Approver"
@@ -120,17 +120,13 @@ app.get(
       try {
         await axios.post(
           "https://notification-service-cyan.vercel.app/send-login-notification",
-          {
-            email,
-            name,
-          }
+          { email, name }
         );
       } catch (notificationError) {
         console.error("Failed to send login notification:", notificationError);
       }
-      console.log("Logged in user:", req.user);
 
-      // Send JWT token to frontend in URL
+      // Redirect to frontend with token
       res.redirect(
         `https://request-managemnet-system.netlify.app/?token=${encodeURIComponent(
           token
@@ -144,26 +140,6 @@ app.get(
     }
   }
 );
-
-// Logout Route
-app.get("/auth/logout", async (req, res) => {
-  try {
-    const { email, name } = req.user;
-
-    await axios.post(
-      "https://notification-service-cyan.vercel.app/send-logout-notification",
-      {
-        email,
-        name,
-      }
-    );
-    console.log(`Logout notification sent to ${email}`);
-  } catch (notificationError) {
-    console.error("Failed to send logout notification:", notificationError);
-  }
-
-  res.json({ message: "Logged out successfully" });
-});
 
 app.get("/", (req, res) => {
   res.send("Auth Service running.");
