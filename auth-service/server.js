@@ -41,7 +41,6 @@ passport.use(
       // Directly use the auth-service URL here to avoid loops
       callbackURL:
         "https://api-gateway-three-roan.vercel.app/auth/google/callback",
-      // "https://auth-service-nine-tan.vercel.app/auth/google/callback",
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
@@ -116,16 +115,6 @@ app.get(
         process.env.JWT_SECRET,
         { expiresIn: "1h" }
       );
-
-      // Notify the Notification Service about the login
-      try {
-        await axios.post(
-          "https://notification-service-cyan.vercel.app/send-login-notification",
-          { email, name }
-        );
-      } catch (notificationError) {
-        console.error("Failed to send login notification:", notificationError);
-      }
 
       // Redirect to frontend with token
       res.redirect(
