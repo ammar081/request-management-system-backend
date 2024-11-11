@@ -40,7 +40,8 @@ passport.use(
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       // Directly use the auth-service URL here to avoid loops
       callbackURL:
-        "https://auth-service-nine-tan.vercel.app/auth/google/callback",
+        "https://api-gateway-three-roan.vercel.app/auth/google/callback",
+      // "https://auth-service-nine-tan.vercel.app/auth/google/callback",
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
