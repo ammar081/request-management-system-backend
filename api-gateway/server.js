@@ -1,8 +1,8 @@
 const express = require("express");
 const httpProxy = require("http-proxy");
 const cors = require("cors");
-const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
+// const helmet = require("helmet");
+// const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 const jwt = require("jsonwebtoken");
@@ -12,15 +12,15 @@ app.set("trust proxy", 1); // Set trust proxy to 1 to securely handle rate limit
 const apiProxy = httpProxy.createProxyServer();
 
 // Rate limiting configuration
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per `window` (15 minutes)
-  message: "Too many requests from this IP, please try again after 15 minutes.",
-  headers: true, // Send X-RateLimit headers in responses
-});
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 100, // Limit each IP to 100 requests per `window` (15 minutes)
+//   message: "Too many requests from this IP, please try again after 15 minutes.",
+//   headers: true, // Send X-RateLimit headers in responses
+// });
 
-// Apply rate limiting to all requests
-app.use(limiter);
+// // Apply rate limiting to all requests
+// app.use(limiter);
 
 // JWT authentication function
 function authenticateJWT(req, res, next) {
@@ -51,23 +51,23 @@ app.use(
   })
 );
 
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "https://trusted.cdn.com"],
-        connectSrc: ["'self'", "https://request-managemnet-system.netlify.app"],
-        objectSrc: ["'none'"],
-        upgradeInsecureRequests: [],
-      },
-    },
-    frameguard: { action: "deny" },
-    referrerPolicy: { policy: "no-referrer" },
-    xssFilter: true,
-    noSniff: true,
-  })
-);
+// app.use(
+//   helmet({
+//     contentSecurityPolicy: {
+//       directives: {
+//         defaultSrc: ["'self'"],
+//         scriptSrc: ["'self'", "https://trusted.cdn.com"],
+//         connectSrc: ["'self'", "https://request-managemnet-system.netlify.app"],
+//         objectSrc: ["'none'"],
+//         upgradeInsecureRequests: [],
+//       },
+//     },
+//     frameguard: { action: "deny" },
+//     referrerPolicy: { policy: "no-referrer" },
+//     xssFilter: true,
+//     noSniff: true,
+//   })
+// );
 
 // Define service URLs
 const AUTH_SERVICE = "https://auth-service-nine-tan.vercel.app"; // Auth service
