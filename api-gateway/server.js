@@ -5,6 +5,10 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
+const app = express();
+app.set("trust proxy", 1); // Set trust proxy to handle rate limiting securely on Vercel
+const apiProxy = httpProxy.createProxyServer();
+
 // JWT authentication function
 function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -25,10 +29,6 @@ function authenticateJWT(req, res, next) {
     res.sendStatus(401); // Unauthorized
   }
 }
-
-const app = express();
-app.set("trust proxy", 1); // Set trust proxy to handle rate limiting securely on Vercel
-const apiProxy = httpProxy.createProxyServer();
 
 // Define the URLs of each service
 const AUTH_SERVICE = "https://auth-service-nine-tan.vercel.app";
@@ -72,19 +72,24 @@ const limiter = rateLimit({
 // Apply rate limiting
 app.use(limiter);
 
-// Route Google OAuth paths directly to AUTH_SERVICE
+// Route Google OAuth paths directly to AUTH_SERVICE without path duplication
 app.all("/auth/google", (req, res) => {
-  apiProxy.web(req, res, { target: `${AUTH_SERVICE}/auth/google` }, (error) => {
-    console.error("Error in /auth/google route:", error.message);
-    res.status(500).json({ message: "Error in Google OAuth login route." });
-  });
+  apiProxy.web(
+    req,
+    res,
+    { target: `${AUTH_SERVICE}/auth/google`, changeOrigin: true },
+    (error) => {
+      console.error("Error in /auth/google route:", error.message);
+      res.status(500).json({ message: "Error in Google OAuth login route." });
+    }
+  );
 });
 
 app.all("/auth/google/callback", (req, res) => {
   apiProxy.web(
     req,
     res,
-    { target: `${AUTH_SERVICE}/auth/google/callback` },
+    { target: `${AUTH_SERVICE}/auth/google/callback`, changeOrigin: true },
     (error) => {
       console.error("Error in /auth/google/callback route:", error.message);
       res
