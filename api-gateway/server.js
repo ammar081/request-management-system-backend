@@ -120,7 +120,13 @@ apiProxy.on("error", (err, req, res) => {
   res.status(500).send("Error in API Gateway: " + err.message);
 });
 
-const PORT = 3005;
-app.listen(PORT, () => {
-  console.log(`API Gateway running on port ${PORT}`);
+app.get("/", (req, res) => {
+  res.send("API Gateway is running.");
 });
+
+module.exports = app;
+
+// const PORT = 3005;
+// app.listen(PORT, () => {
+//   console.log(`API Gateway running on port ${PORT}`);
+// });
