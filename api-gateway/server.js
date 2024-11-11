@@ -8,6 +8,7 @@ require("dotenv").config();
 const jwt = require("jsonwebtoken");
 
 const app = express();
+app.set("trust proxy", true); // Enable trust proxy for rate limiting
 const apiProxy = httpProxy.createProxyServer();
 
 // Rate limiting configuration
