@@ -1,6 +1,5 @@
 const express = require("express");
 const passport = require("passport");
-const session = require("express-session");
 const mongoose = require("mongoose");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const cors = require("cors");
@@ -21,7 +20,7 @@ mongoose
   .then(() => console.log("Connected to MongoDB"))
   .catch((error) => console.error("MongoDB connection error:", error));
 
-// CORS configuration for production frontend
+// CORS configuration for frontend
 app.use(
   cors({
     origin: "https://request-managemnet-system.netlify.app",
@@ -30,23 +29,7 @@ app.use(
 );
 
 app.use(express.json());
-
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: true, // Set to true to ensure cookies are only sent over HTTPS
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000,
-    },
-  })
-);
-
 app.use(passport.initialize());
-app.use(passport.session());
-
 app.use("/auth", userRoutes);
 
 // Configure Google OAuth Strategy
@@ -56,7 +39,7 @@ passport.use(
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL:
-        "https://api-gateway-three-roan.vercel.app/auth/google/callback", // Update to API Gateway URL on Vercel
+        "https://api-gateway-three-roan.vercel.app/auth/google/callback", // API Gateway URL on Vercel
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
@@ -68,7 +51,6 @@ passport.use(
           ? "Approver"
           : "Requester";
 
-        // Check by email if googleId doesn't exist, and create or update user
         if (!user) {
           user = await User.findOne({ email: profile.emails[0].value });
           if (!user) {
@@ -85,10 +67,7 @@ passport.use(
             await user.save();
             console.log("Updated user with Google ID:", user);
           }
-        } else {
-          console.log("User already exists:", user);
         }
-
         done(null, user);
       } catch (error) {
         console.error("Error in Google OAuth strategy:", error);
@@ -167,36 +146,23 @@ app.get(
 );
 
 // Logout Route
-app.get("/auth/logout", async (req, res, next) => {
-  if (req.user) {
-    const email = req.user.email;
-    const name = req.user.name;
+app.get("/auth/logout", async (req, res) => {
+  try {
+    const { email, name } = req.user;
 
-    // Send logout notification before ending the session
-    try {
-      await axios.post(
-        "https://notification-service-cyan.vercel.app/send-logout-notification",
-        {
-          email,
-          name,
-        }
-      );
-      console.log(`Logout notification sent to ${email}`);
-    } catch (notificationError) {
-      console.error("Failed to send logout notification:", notificationError);
-    }
+    await axios.post(
+      "https://notification-service-cyan.vercel.app/send-logout-notification",
+      {
+        email,
+        name,
+      }
+    );
+    console.log(`Logout notification sent to ${email}`);
+  } catch (notificationError) {
+    console.error("Failed to send logout notification:", notificationError);
   }
 
-  req.logout((err) => {
-    if (err) return next(err);
-
-    req.session.destroy((error) => {
-      if (error) {
-        console.error("Error destroying session:", error);
-      }
-      res.json({ message: "Logged out successfully" });
-    });
-  });
+  res.json({ message: "Logged out successfully" });
 });
 
 app.get("/", (req, res) => {
@@ -204,8 +170,3 @@ app.get("/", (req, res) => {
 });
 
 module.exports = app;
-
-// const PORT = process.env.PORT || 3000;
-// app.listen(PORT, () => {
-//   console.log(`Auth Service running on port ${PORT}`);
-// });
