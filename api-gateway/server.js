@@ -70,15 +70,39 @@ const AUTH_SERVICE = "https://auth-service-nine-tan.vercel.app"; // Auth service
 const NOTIFICATION_SERVICE = "https://notification-service-cyan.vercel.app/"; // Notification service
 const REQUEST_SERVICE = "https://request-service-kappa.vercel.app"; // Request service
 
-app.all("/auth/google/*", (req, res) => {
-  console.log("Proxying Google auth path through API Gateway");
-
+// Proxy routing with path rewrite for Google OAuth routes
+app.all("/auth/google", (req, res) => {
   apiProxy.web(
     req,
     res,
-    { target: AUTH_SERVICE, changeOrigin: true },
+    {
+      target: AUTH_SERVICE,
+      changeOrigin: true,
+      pathRewrite: { "^/auth/google": "/auth/google" }, // Ensure correct path
+    },
     (error) => {
-      console.error("Auth Service error:", error.message);
+      console.error("Auth Service error in /auth/google route:", error.message);
+      res
+        .status(500)
+        .json({ message: "Auth Service is currently unavailable." });
+    }
+  );
+});
+
+app.all("/auth/google/callback", (req, res) => {
+  apiProxy.web(
+    req,
+    res,
+    {
+      target: AUTH_SERVICE,
+      changeOrigin: true,
+      pathRewrite: { "^/auth/google/callback": "/auth/google/callback" },
+    },
+    (error) => {
+      console.error(
+        "Auth Service error in /auth/google/callback route:",
+        error.message
+      );
       res
         .status(500)
         .json({ message: "Auth Service is currently unavailable." });

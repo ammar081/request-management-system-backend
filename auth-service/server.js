@@ -38,14 +38,12 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      // Directly use the auth-service URL here to avoid loops
       callbackURL:
         "https://api-gateway-three-roan.vercel.app/auth/google/callback",
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
         let user = await User.findOne({ googleId: profile.id });
-
         const approverEmails = ["hafiz.ammar33@gmail.com"];
         const role = approverEmails.includes(profile.emails[0].value)
           ? "Approver"
@@ -101,8 +99,7 @@ app.get(
   }),
   async (req, res) => {
     try {
-      console.log("Callback hit, user:", req.user); // Log the user after successful auth
-
+      console.log("Callback hit, user:", req.user);
       if (!req.user) {
         console.error("User not found after authentication");
         return res.redirect(
@@ -114,24 +111,32 @@ app.get(
       const name = req.user.name;
 
       // Generate JWT token
-      const token = jwt.sign(
-        {
-          id: req.user._id,
-          email: req.user.email,
-          name: req.user.name,
-          role: req.user.role,
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: "1h" }
-      );
-
-      console.log("JWT token generated successfully");
+      let token;
+      try {
+        token = jwt.sign(
+          {
+            id: req.user._id,
+            email: req.user.email,
+            name: req.user.name,
+            role: req.user.role,
+          },
+          process.env.JWT_SECRET,
+          { expiresIn: "1h" }
+        );
+        console.log("JWT token generated successfully");
+      } catch (error) {
+        console.error("Error generating JWT token:", error);
+        return res.redirect(
+          "https://request-managemnet-system.netlify.app?error=token_generation_failed"
+        );
+      }
 
       // Notify the Notification Service about the login
       try {
         await axios.post(
           "https://notification-service-cyan.vercel.app/send-login-notification",
-          { email, name }
+          { email, name },
+          { timeout: 5000 } // Set timeout for Axios request
         );
         console.log("Login notification sent");
       } catch (notificationError) {
