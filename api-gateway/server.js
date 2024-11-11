@@ -8,7 +8,7 @@ require("dotenv").config();
 const jwt = require("jsonwebtoken");
 
 const app = express();
-app.set("trust proxy", true); // Enable trust proxy for rate limiting
+app.set("trust proxy", 1); // Set trust proxy to 1 to securely handle rate limiting on Vercel
 const apiProxy = httpProxy.createProxyServer();
 
 // Rate limiting configuration
