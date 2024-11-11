@@ -70,7 +70,7 @@ app.use(
 
 // Define service URLs
 const AUTH_SERVICE = "https://auth-service-nine-tan.vercel.app"; // Auth service
-const NOTIFICATION_SERVICE = "https://notification-service-cyan.vercel.app"; // Notification service
+const NOTIFICATION_SERVICE = "https://notification-service-cyan.vercel.app/"; // Notification service
 const REQUEST_SERVICE = "https://request-service-kappa.vercel.app"; // Request service
 
 // Proxy routing
