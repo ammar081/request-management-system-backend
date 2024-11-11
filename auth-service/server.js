@@ -20,7 +20,7 @@ mongoose
   .then(() => console.log("Connected to MongoDB"))
   .catch((error) => console.error("MongoDB connection error:", error));
 
-// CORS configuration for frontend
+// CORS configuration
 app.use(
   cors({
     origin: "https://request-managemnet-system.netlify.app",
@@ -32,13 +32,12 @@ app.use(express.json());
 app.use(passport.initialize());
 app.use("/auth", userRoutes);
 
-// Configure Google OAuth Strategy
+// Google OAuth Strategy
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      // Directly use the auth-service URL here to avoid loops
       callbackURL:
         "https://api-gateway-three-roan.vercel.app/auth/google/callback",
     },
@@ -101,7 +100,7 @@ app.get(
   }),
   async (req, res) => {
     try {
-      console.log("Callback hit, user:", req.user); // Log the user after successful auth
+      console.log("Callback hit, user:", req.user);
 
       if (!req.user) {
         console.error("User not found after authentication");
@@ -131,7 +130,8 @@ app.get(
       try {
         await axios.post(
           "https://notification-service-cyan.vercel.app/send-login-notification",
-          { email, name }
+          { email, name },
+          { timeout: 5000 } // Adding a timeout to handle potential delays
         );
         console.log("Login notification sent");
       } catch (notificationError) {
@@ -153,6 +153,7 @@ app.get(
   }
 );
 
+// Health check route
 app.get("/", (req, res) => {
   res.send("Auth Service running.");
 });
