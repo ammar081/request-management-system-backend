@@ -5,35 +5,39 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
+const jwt = require("jsonwebtoken");
+
 const app = express();
 app.set("trust proxy", 1); // Set trust proxy to handle rate limiting securely on Vercel
 const apiProxy = httpProxy.createProxyServer();
 
+// Rate limiting configuration
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per `window` (15 minutes)
+  message: "Too many requests from this IP, please try again after 15 minutes.",
+  headers: true, // Send X-RateLimit headers in responses
+});
+
+// Apply rate limiting to all requests
+app.use(limiter);
+
 // JWT authentication function
 function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization;
-  console.log("Authorization Header:", authHeader); // Log the auth header
-
   if (authHeader) {
     const token = authHeader.split(" ")[1];
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
       if (err) {
-        console.error("JWT Verification Error:", err); // Log verification error
         return res.sendStatus(403); // Forbidden
       }
       req.user = user;
       next();
     });
   } else {
-    console.error("Authorization header missing"); // Log missing auth header
     res.sendStatus(401); // Unauthorized
   }
 }
-
-// Define the URLs of each service
-const AUTH_SERVICE = "https://auth-service-nine-tan.vercel.app";
-const NOTIFICATION_SERVICE = "https://notification-service-cyan.vercel.app";
-const REQUEST_SERVICE = "https://request-service-kappa.vercel.app";
 
 // Middleware
 app.use(
@@ -61,26 +65,26 @@ app.use(
   })
 );
 
-// Define rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per `window`
-  message: "Too many requests from this IP, please try again after 15 minutes.",
-  headers: true,
-});
+// Define service URLs
+const AUTH_SERVICE = "https://auth-service-nine-tan.vercel.app"; // Auth service
+const NOTIFICATION_SERVICE = "https://notification-service-cyan.vercel.app/"; // Notification service
+const REQUEST_SERVICE = "https://request-service-kappa.vercel.app"; // Request service
 
-// Apply rate limiting
-app.use(limiter);
-
-// Route Google OAuth paths directly to AUTH_SERVICE without path duplication
+// Proxy routing with path rewrite for Google OAuth routes
 app.all("/auth/google", (req, res) => {
   apiProxy.web(
     req,
     res,
-    { target: `${AUTH_SERVICE}/auth/google`, changeOrigin: true },
+    {
+      target: AUTH_SERVICE,
+      changeOrigin: true,
+      pathRewrite: { "^/auth/google": "/auth/google" }, // Ensure correct path
+    },
     (error) => {
-      console.error("Error in /auth/google route:", error.message);
-      res.status(500).json({ message: "Error in Google OAuth login route." });
+      console.error("Auth Service error in /auth/google route:", error.message);
+      res
+        .status(500)
+        .json({ message: "Auth Service is currently unavailable." });
     }
   );
 });
@@ -89,17 +93,24 @@ app.all("/auth/google/callback", (req, res) => {
   apiProxy.web(
     req,
     res,
-    { target: `${AUTH_SERVICE}/auth/google/callback`, changeOrigin: true },
+    {
+      target: AUTH_SERVICE,
+      changeOrigin: true,
+      pathRewrite: { "^/auth/google/callback": "/auth/google/callback" },
+    },
     (error) => {
-      console.error("Error in /auth/google/callback route:", error.message);
+      console.error(
+        "Auth Service error in /auth/google/callback route:",
+        error.message
+      );
       res
         .status(500)
-        .json({ message: "Error in Google OAuth callback route." });
+        .json({ message: "Auth Service is currently unavailable." });
     }
   );
 });
 
-// Remaining routes (for other services) in the API Gateway
+// Proxy other routes as usual
 app.all("/notify/*", authenticateJWT, (req, res) => {
   apiProxy.web(req, res, { target: NOTIFICATION_SERVICE }, (error) => {
     console.error("Notification Service error:", error.message);
@@ -129,11 +140,11 @@ apiProxy.on("proxyReq", (proxyReq, req, res) => {
 
 apiProxy.on("proxyRes", (proxyRes, req, res) => {
   proxyRes.headers["Access-Control-Allow-Origin"] =
-    "https://request-managemnet-system.netlify.app";
-  proxyRes.headers["Access-Control-Allow-Credentials"] = "true";
+    "https://request-managemnet-system.netlify.app"; // Update with the new frontend URL
+  proxyRes.headers["Access-Control-Allow-Credentials"] = "true"; // Enable credentials if necessary
 });
 
-// Error handling for proxy errors
+// Global error handling for proxy
 apiProxy.on("error", (err, req, res) => {
   console.error("Error in API Gateway:", err.message);
   res.status(500).send("Error in API Gateway: " + err.message);
