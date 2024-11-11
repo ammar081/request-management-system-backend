@@ -101,6 +101,15 @@ app.get(
   }),
   async (req, res) => {
     try {
+      console.log("Callback hit, user:", req.user); // Log the user after successful auth
+
+      if (!req.user) {
+        console.error("User not found after authentication");
+        return res.redirect(
+          "https://request-managemnet-system.netlify.app?error=user_not_found"
+        );
+      }
+
       const email = req.user.email;
       const name = req.user.name;
 
@@ -116,12 +125,15 @@ app.get(
         { expiresIn: "1h" }
       );
 
+      console.log("JWT token generated successfully");
+
       // Notify the Notification Service about the login
       try {
         await axios.post(
           "https://notification-service-cyan.vercel.app/send-login-notification",
           { email, name }
         );
+        console.log("Login notification sent");
       } catch (notificationError) {
         console.error("Failed to send login notification:", notificationError);
       }
