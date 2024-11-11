@@ -1,6 +1,8 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const requestRoutes = require("./routes/requestRoutes");
+const cors = require("cors");
+const helmet = require("helmet");
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
 
@@ -16,6 +18,7 @@ mongoose
   .then(() => console.log("Connected to MongoDB"))
   .catch((error) => console.error("MongoDB connection error:", error));
 
+// JWT Authentication Middleware
 function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization;
   console.log("Authorization Header:", authHeader); // Log the authorization header
@@ -37,8 +40,14 @@ function authenticateJWT(req, res, next) {
   }
 }
 
-// Use routes
+// Use routes with JWT authentication
 app.use("/requests", authenticateJWT, requestRoutes);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error("Server Error:", err.message);
+  res.status(500).json({ message: "Server Error" });
+});
 
 const PORT = process.env.PORT || 3002;
 app.listen(PORT, () => {

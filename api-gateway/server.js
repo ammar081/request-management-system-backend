@@ -45,8 +45,8 @@ function authenticateJWT(req, res, next) {
 // Middleware
 app.use(
   cors({
-    origin: "http://localhost:8080",
-    credentials: true,
+    origin: "https://request-managemnet-system.netlify.app",
+    credentials: true, // Allow credentials (e.g., cookies) if needed
   })
 );
 
@@ -56,6 +56,7 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "https://trusted.cdn.com"],
+        connectSrc: ["'self'", "https://request-managemnet-system.netlify.app"],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],
       },
@@ -68,9 +69,9 @@ app.use(
 );
 
 // Define service URLs
-const AUTH_SERVICE = "http://127.0.0.1:3000"; // Auth service
-const NOTIFICATION_SERVICE = "http://127.0.0.1:3001"; // Notification service
-const REQUEST_SERVICE = "http://127.0.0.1:3002"; // Request service
+const AUTH_SERVICE = "https://auth-service-nine-tan.vercel.app"; // Auth service
+const NOTIFICATION_SERVICE = "https://notification-service-cyan.vercel.app"; // Notification service
+const REQUEST_SERVICE = "https://request-service-kappa.vercel.app"; // Request service
 
 // Proxy routing
 app.all("/auth/*", (req, res) => {
@@ -108,8 +109,9 @@ apiProxy.on("proxyReq", (proxyReq, req, res) => {
 });
 
 apiProxy.on("proxyRes", (proxyRes, req, res) => {
-  proxyRes.headers["Access-Control-Allow-Origin"] = "http://localhost:8080";
-  proxyRes.headers["Access-Control-Allow-Credentials"] = "true";
+  proxyRes.headers["Access-Control-Allow-Origin"] =
+    "https://request-managemnet-system.netlify.app"; // Update with the new frontend URL
+  proxyRes.headers["Access-Control-Allow-Credentials"] = "true"; // Enable credentials if necessary
 });
 
 // Global error handling for proxy

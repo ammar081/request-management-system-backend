@@ -8,8 +8,11 @@ const userRoutes = require("./routes/userRoutes");
 const User = require("./models/User");
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
+const axios = require("axios");
+
 const app = express();
 
+// Connect to MongoDB
 mongoose
   .connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
@@ -18,9 +21,10 @@ mongoose
   .then(() => console.log("Connected to MongoDB"))
   .catch((error) => console.error("MongoDB connection error:", error));
 
+// CORS configuration for production frontend
 app.use(
   cors({
-    origin: "http://localhost:8080",
+    origin: "https://request-managemnet-system.netlify.app",
     credentials: true,
   })
 );
@@ -33,7 +37,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false,
+      secure: true, // Set to true to ensure cookies are only sent over HTTPS
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000,
     },
@@ -51,26 +55,23 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "http://localhost:3005/auth/google/callback",
+      callbackURL:
+        "https://api-gateway-three-roan.vercel.app/auth/google/callback", // Update to API Gateway URL on Vercel
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        // Check if user already exists by googleId
         let user = await User.findOne({ googleId: profile.id });
 
         // Define the list of approver emails
         const approverEmails = ["hafiz.ammar33@gmail.com"];
-
-        // Determine role based on the email address
         const role = approverEmails.includes(profile.emails[0].value)
           ? "Approver"
           : "Requester";
 
-        // If the user does not exist, check by email and create if still not found
+        // Check by email if googleId doesn't exist, and create or update user
         if (!user) {
           user = await User.findOne({ email: profile.emails[0].value });
           if (!user) {
-            // Create a new user if none exists with the email or googleId
             user = new User({
               googleId: profile.id,
               name: profile.displayName,
@@ -80,7 +81,6 @@ passport.use(
             await user.save();
             console.log("New user created:", user);
           } else {
-            // Update existing user's googleId if they logged in with the same email
             user.googleId = profile.id;
             await user.save();
             console.log("Updated user with Google ID:", user);
@@ -89,7 +89,6 @@ passport.use(
           console.log("User already exists:", user);
         }
 
-        // Pass the user to Passport
         done(null, user);
       } catch (error) {
         console.error("Error in Google OAuth strategy:", error);
@@ -116,12 +115,10 @@ app.get(
 );
 
 // Google OAuth Callback Route
-const axios = require("axios");
-
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", {
-    failureRedirect: "http://localhost:8080",
+    failureRedirect: "https://request-managemnet-system.netlify.app",
   }),
   async (req, res) => {
     try {
@@ -135,27 +132,36 @@ app.get(
           email: req.user.email,
           name: req.user.name,
           role: req.user.role,
-        }, // Payload data
-        process.env.JWT_SECRET, // Secret key from .env
-        { expiresIn: "1h" } // Token expiration
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
       );
 
       // Notify the Notification Service about the login
       try {
-        await axios.post("http://localhost:3001/send-login-notification", {
-          email,
-          name,
-        });
+        await axios.post(
+          "https://notification-service-cyan.vercel.app/send-login-notification",
+          {
+            email,
+            name,
+          }
+        );
       } catch (notificationError) {
         console.error("Failed to send login notification:", notificationError);
       }
       console.log("Logged in user:", req.user);
 
       // Send JWT token to frontend in URL
-      res.redirect(`http://localhost:8080/?token=${encodeURIComponent(token)}`);
+      res.redirect(
+        `https://request-managemnet-system.netlify.app/?token=${encodeURIComponent(
+          token
+        )}`
+      );
     } catch (error) {
       console.error("Error in Google OAuth callback:", error);
-      res.redirect("http://localhost:8080?error=server_error");
+      res.redirect(
+        "https://request-managemnet-system.netlify.app?error=server_error"
+      );
     }
   }
 );
@@ -168,10 +174,13 @@ app.get("/auth/logout", async (req, res, next) => {
 
     // Send logout notification before ending the session
     try {
-      await axios.post("http://localhost:3001/send-logout-notification", {
-        email,
-        name,
-      });
+      await axios.post(
+        "https://notification-service-cyan.vercel.app/send-logout-notification",
+        {
+          email,
+          name,
+        }
+      );
       console.log(`Logout notification sent to ${email}`);
     } catch (notificationError) {
       console.error("Failed to send logout notification:", notificationError);

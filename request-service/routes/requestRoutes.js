@@ -4,6 +4,10 @@ const Request = require("../models/Request");
 const axios = require("axios");
 require("dotenv").config();
 
+const NOTIFICATION_SERVICE_URL =
+  "https://notification-service-cyan.vercel.app ";
+
+// Fetch all pending requests
 router.get("/pending-requests", async (req, res) => {
   try {
     const pendingRequests = await Request.find({ status: "pending" });
@@ -14,6 +18,7 @@ router.get("/pending-requests", async (req, res) => {
   }
 });
 
+// Fetch requests by user email
 router.get("/user-requests", async (req, res) => {
   const { email } = req.query;
 
@@ -41,8 +46,8 @@ router.post("/approve-request", async (req, res) => {
       return res.status(404).json({ message: "Request not found." });
     }
 
-    // Call Notification Service to send approval notification
-    await axios.post("http://localhost:3001/send-approval-notification", {
+    // Notify via Notification Service
+    await axios.post(`${NOTIFICATION_SERVICE_URL}/send-approval-notification`, {
       email: request.email,
       superiorEmail: request.superiorEmail,
       title: request.title,
@@ -75,15 +80,19 @@ router.post("/reject-request", async (req, res) => {
       return res.status(404).json({ message: "Request not found." });
     }
 
-    // Call Notification Service to send rejection notification
-    await axios.post("http://localhost:3001/send-rejection-notification", {
-      email: request.email,
-      superiorEmail: request.superiorEmail,
-      title: request.title,
-      type: request.type,
-      description: request.description,
-      urgency: request.urgency,
-    });
+    // Notify via Notification Service
+    await axios.post(
+      `${NOTIFICATION_SERVICE_URL}/send-rejection-notification`,
+      {
+        email: request.email,
+        superiorEmail: request.superiorEmail,
+        title: request.title,
+
+        type: request.type,
+        description: request.description,
+        urgency: request.urgency,
+      }
+    );
 
     res.json({ message: "Request rejected and notifications sent." });
   } catch (error) {
@@ -106,11 +115,12 @@ router.post("/create", async (req, res) => {
       urgency,
       email,
       superiorEmail,
+      status: "pending", // Default to pending
     });
     await newRequest.save();
 
-    // Call Notification Service to send creation notification
-    await axios.post("http://localhost:3001/send-creation-notification", {
+    // Notify via Notification Service
+    await axios.post(`${NOTIFICATION_SERVICE_URL}/send-creation-notification`, {
       title,
       description,
       type,
