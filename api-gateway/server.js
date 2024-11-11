@@ -8,21 +8,20 @@ require("dotenv").config();
 const jwt = require("jsonwebtoken");
 
 const app = express();
-app.set("trust proxy", 1); // Set trust proxy to handle rate limiting securely on Vercel
+app.set("trust proxy", 1);
 const apiProxy = httpProxy.createProxyServer();
 
 // Rate limiting configuration
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per `window` (15 minutes)
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: "Too many requests from this IP, please try again after 15 minutes.",
-  headers: true, // Send X-RateLimit headers in responses
+  headers: true,
 });
 
-// Apply rate limiting to all requests
 app.use(limiter);
 
-// JWT authentication function
+// JWT authentication
 function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization;
   if (authHeader) {
@@ -65,23 +64,22 @@ app.use(
   })
 );
 
-// Define service URLs
+// Service URLs
 const AUTH_SERVICE = "https://auth-service-nine-tan.vercel.app"; // Auth service
 const NOTIFICATION_SERVICE = "https://notification-service-cyan.vercel.app/"; // Notification service
 const REQUEST_SERVICE = "https://request-service-kappa.vercel.app"; // Request service
 
-// Proxy routing with path rewrite for Google OAuth routes
-app.all("/auth/google", (req, res) => {
+// Auth routing
+app.get("/auth/google", (req, res) => {
   apiProxy.web(
     req,
     res,
     {
       target: AUTH_SERVICE,
-      changeOrigin: true,
-      pathRewrite: { "^/auth/google": "/auth/google" }, // Ensure correct path
+      pathRewrite: { "^/auth/google": "/auth/google" },
     },
     (error) => {
-      console.error("Auth Service error in /auth/google route:", error.message);
+      console.error("Error in /auth/google route:", error.message);
       res
         .status(500)
         .json({ message: "Auth Service is currently unavailable." });
@@ -89,20 +87,16 @@ app.all("/auth/google", (req, res) => {
   );
 });
 
-app.all("/auth/google/callback", (req, res) => {
+app.get("/auth/google/callback", (req, res) => {
   apiProxy.web(
     req,
     res,
     {
       target: AUTH_SERVICE,
-      changeOrigin: true,
       pathRewrite: { "^/auth/google/callback": "/auth/google/callback" },
     },
     (error) => {
-      console.error(
-        "Auth Service error in /auth/google/callback route:",
-        error.message
-      );
+      console.error("Error in /auth/google/callback route:", error.message);
       res
         .status(500)
         .json({ message: "Auth Service is currently unavailable." });
@@ -110,7 +104,7 @@ app.all("/auth/google/callback", (req, res) => {
   );
 });
 
-// Proxy other routes as usual
+// Other routing for protected services
 app.all("/notify/*", authenticateJWT, (req, res) => {
   apiProxy.web(req, res, { target: NOTIFICATION_SERVICE }, (error) => {
     console.error("Notification Service error:", error.message);
@@ -129,6 +123,7 @@ app.all("/requests/*", authenticateJWT, (req, res) => {
   });
 });
 
+// Proxy headers
 apiProxy.on("proxyReq", (proxyReq, req, res) => {
   if (req.headers["authorization"]) {
     proxyReq.setHeader("Authorization", req.headers["authorization"]);
@@ -140,8 +135,8 @@ apiProxy.on("proxyReq", (proxyReq, req, res) => {
 
 apiProxy.on("proxyRes", (proxyRes, req, res) => {
   proxyRes.headers["Access-Control-Allow-Origin"] =
-    "https://request-managemnet-system.netlify.app"; // Update with the new frontend URL
-  proxyRes.headers["Access-Control-Allow-Credentials"] = "true"; // Enable credentials if necessary
+    "https://request-managemnet-system.netlify.app";
+  proxyRes.headers["Access-Control-Allow-Credentials"] = "true";
 });
 
 // Global error handling for proxy
