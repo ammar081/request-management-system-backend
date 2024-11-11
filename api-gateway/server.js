@@ -74,8 +74,15 @@ const AUTH_SERVICE = "https://auth-service-nine-tan.vercel.app"; // Auth service
 const NOTIFICATION_SERVICE = "https://notification-service-cyan.vercel.app/"; // Notification service
 const REQUEST_SERVICE = "https://request-service-kappa.vercel.app"; // Request service
 
-// Update route for Google OAuth callback
-app.all("/auth/google/*", (req, res) => {
+// Proxy routing for Google OAuth
+app.all("/auth/google", (req, res) => {
+  apiProxy.web(req, res, { target: AUTH_SERVICE }, (error) => {
+    console.error("Auth Service error:", error.message);
+    res.status(500).json({ message: "Auth Service is currently unavailable." });
+  });
+});
+
+app.all("/auth/google/callback", (req, res) => {
   apiProxy.web(req, res, { target: AUTH_SERVICE }, (error) => {
     console.error("Auth Service error:", error.message);
     res.status(500).json({ message: "Auth Service is currently unavailable." });
