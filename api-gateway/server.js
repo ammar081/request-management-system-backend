@@ -8,20 +8,19 @@ require("dotenv").config();
 const jwt = require("jsonwebtoken");
 
 const app = express();
-app.set("trust proxy", 1);
+app.set("trust proxy", 1); // Set trust proxy for Vercel handling
 const apiProxy = httpProxy.createProxyServer();
 
 // Rate limiting configuration
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100,
   message: "Too many requests from this IP, please try again after 15 minutes.",
-  headers: true,
 });
 
 app.use(limiter);
 
-// JWT authentication
+// JWT authentication middleware
 function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization;
   if (authHeader) {
@@ -57,27 +56,20 @@ app.use(
         upgradeInsecureRequests: [],
       },
     },
-    frameguard: { action: "deny" },
-    referrerPolicy: { policy: "no-referrer" },
-    xssFilter: true,
-    noSniff: true,
   })
 );
 
 // Service URLs
-const AUTH_SERVICE = "https://auth-service-nine-tan.vercel.app"; // Auth service
-const NOTIFICATION_SERVICE = "https://notification-service-cyan.vercel.app/"; // Notification service
-const REQUEST_SERVICE = "https://request-service-kappa.vercel.app"; // Request service
+const AUTH_SERVICE = "https://auth-service-nine-tan.vercel.app";
+const NOTIFICATION_SERVICE = "https://notification-service-cyan.vercel.app";
+const REQUEST_SERVICE = "https://request-service-kappa.vercel.app";
 
-// Auth routing
-app.get("/auth/google", (req, res) => {
+// Google OAuth routes to AUTH_SERVICE
+app.all("/auth/google", (req, res) => {
   apiProxy.web(
     req,
     res,
-    {
-      target: AUTH_SERVICE,
-      pathRewrite: { "^/auth/google": "/auth/google" },
-    },
+    { target: AUTH_SERVICE, changeOrigin: true },
     (error) => {
       console.error("Error in /auth/google route:", error.message);
       res
@@ -87,14 +79,11 @@ app.get("/auth/google", (req, res) => {
   );
 });
 
-app.get("/auth/google/callback", (req, res) => {
+app.all("/auth/google/callback", (req, res) => {
   apiProxy.web(
     req,
     res,
-    {
-      target: AUTH_SERVICE,
-      pathRewrite: { "^/auth/google/callback": "/auth/google/callback" },
-    },
+    { target: AUTH_SERVICE, changeOrigin: true },
     (error) => {
       console.error("Error in /auth/google/callback route:", error.message);
       res
@@ -104,7 +93,7 @@ app.get("/auth/google/callback", (req, res) => {
   );
 });
 
-// Other routing for protected services
+// Other protected routes
 app.all("/notify/*", authenticateJWT, (req, res) => {
   apiProxy.web(req, res, { target: NOTIFICATION_SERVICE }, (error) => {
     console.error("Notification Service error:", error.message);
@@ -145,7 +134,6 @@ apiProxy.on("error", (err, req, res) => {
   res.status(500).send("Error in API Gateway: " + err.message);
 });
 
-// Health check route for API Gateway
 app.get("/", (req, res) => {
   res.send("API Gateway is running.");
 });
