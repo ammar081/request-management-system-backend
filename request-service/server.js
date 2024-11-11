@@ -1,7 +1,6 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const requestRoutes = require("./routes/requestRoutes");
-const cors = require("cors");
 const helmet = require("helmet");
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
@@ -49,7 +48,13 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Server Error" });
 });
 
-const PORT = process.env.PORT || 3002;
-app.listen(PORT, () => {
-  console.log(`Request Service running on port ${PORT}`);
+app.get("/", (req, res) => {
+  res.send("Request Service running.");
 });
+
+module.exports = app;
+
+// const PORT = process.env.PORT || 3002;
+// app.listen(PORT, () => {
+//   console.log(`Request Service running on port ${PORT}`);
+// });

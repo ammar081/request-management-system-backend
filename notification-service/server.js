@@ -2,29 +2,10 @@ const express = require("express");
 const mongoose = require("mongoose");
 const Notification = require("./models/Notification");
 const nodemailer = require("nodemailer");
-const cors = require("cors");
-const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 const app = express();
 app.use(express.json());
-
-// JWT Authentication Middleware
-function authenticateJWT(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (authHeader) {
-    const token = authHeader.split(" ")[1];
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-      if (err) {
-        return res.sendStatus(403); // Forbidden
-      }
-      req.user = user;
-      next();
-    });
-  } else {
-    res.sendStatus(401); // Unauthorized
-  }
-}
 
 // Connect to MongoDB
 mongoose
@@ -47,7 +28,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Endpoint to handle login notifications
-app.post("/send-login-notification", authenticateJWT, async (req, res) => {
+app.post("/send-login-notification", async (req, res) => {
   const { email, name } = req.body;
   const mailOptions = {
     from: process.env.SMTP_USER,
@@ -78,13 +59,18 @@ app.post("/send-login-notification", authenticateJWT, async (req, res) => {
   }
 });
 
-// Repeat authenticateJWT for other notification endpoints
-app.post("/send-logout-notification", authenticateJWT, async (req, res) => {
+app.post("/send-logout-notification", async (req, res) => {
   // Similar logic
 });
 
-// Start the server
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Notification Service running on port ${PORT}`);
+app.get("/", (req, res) => {
+  res.send("Notification Service running.");
 });
+
+module.exports = app;
+
+// Start the server
+// const PORT = process.env.PORT || 3001;
+// app.listen(PORT, () => {
+//   console.log(`Notification Service running on port ${PORT}`);
+// });
